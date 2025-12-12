@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.pyc
+
+# Env & secrets
+.env
+service_account.json
+
+# Logs & generated files
+post_log.docx
+*.log
