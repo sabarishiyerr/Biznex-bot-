@@ -10,6 +10,10 @@ from google.oauth2.service_account import Credentials
 from docx import Document
 from docx.opc.exceptions import PackageNotFoundError
 
+BOT_TIMEZONE_OFFSET_HOURS = 5
+BOT_TIMEZONE_OFFSET_MINUTES = 30
+
+
 # =========================
 # 1. LOAD CONFIG / CLIENTS
 # =========================
@@ -148,7 +152,12 @@ def find_all_pending_content(content_sheet):
     records = content_sheet.get_all_records()
     pending_rows = []
 
-    now = datetime.datetime.now()
+    utc_now = datetime.datetime.utcnow()
+    now = utc_now + datetime.timedelta(
+        hours=BOT_TIMEZONE_OFFSET_HOURS,
+        minutes=BOT_TIMEZONE_OFFSET_MINUTES
+    )
+
     today = now.date()
     current_time = now.time()
 
