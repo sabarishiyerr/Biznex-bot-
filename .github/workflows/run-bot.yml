@@ -2,7 +2,7 @@ name: Run Biznex Bot Scheduler
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # every 15 minutes (UTC)
+    - cron: "* * * * *"   # every 15 minutes (UTC)
   workflow_dispatch:         # manual trigger
 
 jobs:
