@@ -91,28 +91,63 @@ def add_content_item(date, platforms, idea,
     content_sheet.append_row(new_row)
     return next_id
 
+def normalize_sheet_date(value: str) -> str:
+    """
+    Convert different sheet date formats to YYYY-MM-DD.
+    Returns "" if blank/unparseable.
+    """
+    if value is None:
+        return ""
+    s = str(value).strip()
+    if not s:
+        return ""
+
+    # Already ISO date
+    try:
+        return datetime.date.fromisoformat(s).isoformat()
+    except ValueError:
+        pass
+
+    # Common formats from Sheets: DD-MM-YYYY or DD/MM/YYYY
+    for fmt in ("%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.datetime.strptime(s, fmt).date().isoformat()
+        except ValueError:
+            continue
+
+    return ""
 
 
 def find_all_pending_content(content_sheet):
     """
     Find ALL rows where status == 'pending'
-    and date is today or blank.
+    and scheduled date is today OR earlier (past).
     Returns a list of row dicts with '__row_index__' added.
     """
     records = content_sheet.get_all_records()
     today_str = datetime.date.today().isoformat()
     pending_rows = []
 
-    for idx, row in enumerate(records, start=2):  # data starts at row 2
+    for idx, row in enumerate(records, start=2):
         status = (row.get("status") or "").strip().lower()
-        date_val = (row.get("date") or "").strip()
+        date_val = normalize_sheet_date(row.get("date"))
 
-        if status == "pending":
-            if date_val and date_val != today_str:
-                # if date is set and not today, skip
-                continue
-            row["__row_index__"] = idx
-            pending_rows.append(row)
+        if status != "pending":
+            continue
+
+        row["date"] = date_val  # optional debug
+
+        if date_val:
+            # ✅ due if date is today OR earlier
+            if date_val > today_str:
+                continue  # future -> not due yet
+        else:
+        # blank date means "post any day"
+            pass
+
+    row["__row_index__"] = idx
+    pending_rows.append(row)
+
 
     return pending_rows
 

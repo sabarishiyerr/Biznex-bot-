@@ -7,23 +7,29 @@ st.set_page_config(page_title="Biznex Bot 🤖 – Content Scheduler", page_icon
 
 st.title("Biznex Bot 🤖 – Content Scheduler")
 
-st.write(
-    """
-Type a **prompt** to schedule a post.  
-The bot will parse it, save it to the Google Sheet, and (optionally) run the posting bot.
-
-Use this format (simple, consistent):
-
-`date=YYYY-MM-DD; platforms=FB, IG, LinkedIn; idea=Your idea here; groups=Group 1, Group 2; caption=Optional caption; hashtags=#tag1 #tag2`
-
-- **date** → when it should be posted (YYYY-MM-DD). Leave blank to post any day the bot runs.
-- **platforms** → e.g. `FB`, `FB, LinkedIn`, `IG`
-- **idea** → main content idea
-- **groups** → optional, FB groups list
-- **caption** → optional, if you want to write it yourself
-- **hashtags** → optional
+PROMPT_TEMPLATE = """\
+date: 2025-12-15 (optional)
+platforms: FB, IG, LinkedIn
+idea: 20% off for new subscribers
+groups: Group 1, Group 2 (optional)
+caption: optional custom caption
+hashtags: #globalbiznex #marketing (optional)
 """
-)
+
+st.write("Type your post details like this:")
+st.code(PROMPT_TEMPLATE, language="text")
+
+with st.expander("Example (copy/paste)"):
+    st.code(
+        """\
+date: 2025-12-15
+platforms: FB, LinkedIn
+idea: 20% off for new subscribers
+groups: Group 1, Group 2
+""",
+        language="text",
+    )
+
 
 st.divider()
 
@@ -43,10 +49,20 @@ run_immediately = st.checkbox("Run posting bot immediately after scheduling", va
 
 def parse_prompt(prompt: str):
     """
-    Very simple parser for prompts like:
-    date=2025-12-15; platforms=FB, IG; idea=Something; groups=G1, G2; caption=...; hashtags=...
-    Returns a dict with keys: date, platforms, idea, groups, caption, hashtags, image_url
+    Supports BOTH formats:
+
+    Easy format (recommended):
+      date: 2025-12-15
+      platforms: FB, LinkedIn
+      idea: 20% off for new subscribers
+      groups: Group 1, Group 2
+      caption: ...
+      hashtags: ...
+
+    Old format (still supported):
+      date=2025-12-15; platforms=FB, LinkedIn; idea=...; groups=...; caption=...; hashtags=...
     """
+
     data = {
         "date": "",
         "platforms": "",
@@ -57,32 +73,56 @@ def parse_prompt(prompt: str):
         "image_url": "",
     }
 
-    parts = [p.strip() for p in prompt.split(";") if p.strip()]
-    for part in parts:
-        if "=" in part:
-            key, value = part.split("=", 1)
+    text = prompt.strip()
+
+    # --- 1) Try EASY "key: value" format (line-based or pipe-separated) ---
+    # allow either newlines or " | " separators
+    candidates = []
+    if "\n" in text:
+        candidates = [line.strip() for line in text.splitlines() if line.strip()]
+    elif "|" in text:
+        candidates = [chunk.strip() for chunk in text.split("|") if chunk.strip()]
+
+    for line in candidates:
+        if ":" in line:
+            key, value = line.split(":", 1)
             key = key.strip().lower()
             value = value.strip()
             if key in data:
+                # If user writes: date: 2025-12-15 (optional) -> strip "(optional)"
+                value = value.replace("(optional)", "").strip()
                 data[key] = value
 
-    # Basic validation
+    # --- 2) If required fields still missing, fallback to OLD "key=value; ..." format ---
+    if not data["platforms"] or not data["idea"]:
+        parts = [p.strip() for p in text.split(";") if p.strip()]
+        for part in parts:
+            if "=" in part:
+                key, value = part.split("=", 1)
+                key = key.strip().lower()
+                value = value.strip()
+                if key in data:
+                    data[key] = value
+
+    # --- Validation ---
     if not data["idea"]:
-        raise ValueError("Missing 'idea'. Please include: idea=Your main idea")
+        raise ValueError("Missing 'idea'. Example: idea: 20% off for new subscribers")
     if not data["platforms"]:
-        raise ValueError("Missing 'platforms'. Please include: platforms=FB, IG, LinkedIn")
+        raise ValueError("Missing 'platforms'. Example: platforms: FB, LinkedIn")
 
     # Optional: check date format if provided
     if data["date"]:
         try:
             datetime.date.fromisoformat(data["date"])
         except ValueError:
-            raise ValueError("Date must be in format YYYY-MM-DD, e.g. 2025-12-15")
+            raise ValueError("Date must be YYYY-MM-DD (example: 2025-12-15)")
 
     return data
 
+
 # Chat input at the bottom
-user_prompt = st.chat_input("Type your scheduling prompt here...")
+user_prompt = st.chat_input("Type your details here...")
+
 
 if user_prompt:
     # Add user message to chat history
