@@ -153,9 +153,19 @@ def find_all_pending_content(content_sheet):
 
 
 def update_content_status(content_sheet, row_index, new_status):
-    # status is column 9 based on our header layout
-    STATUS_COL = 9
-    content_sheet.update_cell(row_index, STATUS_COL, new_status)
+    
+    def get_column_index_by_header(ws, header_name: str) -> int:
+    headers = ws.row_values(1)  # first row
+    headers_lower = [h.strip().lower() for h in headers]
+    try:
+        return headers_lower.index(header_name.strip().lower()) + 1  # 1-based for gspread
+    except ValueError:
+        raise ValueError(f"Header '{header_name}' not found in sheet. Headers: {headers}")
+
+def update_content_status(content_sheet, row_index, new_status):
+    status_col = get_column_index_by_header(content_sheet, "status")
+    content_sheet.update_cell(row_index, status_col, new_status)
+
 
 
 def append_post_log(log_sheet, content_id, platform, caption_used, post_url):
