@@ -117,43 +117,83 @@ def normalize_sheet_date(value: str) -> str:
 
     return ""
 
+def normalize_sheet_time(value: str) -> str:
+    """
+    Normalize time values from the sheet into HH:MM (24-hour).
+    Returns "" if blank/unparseable.
+    """
+    if value is None:
+        return ""
+    s = str(value).strip()
+    if not s:
+        return ""
+
+    # Common time formats from Sheets
+    for fmt in ("%H:%M", "%H:%M:%S"):
+        try:
+            return datetime.datetime.strptime(s, fmt).time().strftime("%H:%M")
+        except ValueError:
+            continue
+
+    return ""
+
 
 def find_all_pending_content(content_sheet):
     """
     Find ALL rows where status == 'pending'
     and scheduled date is today OR earlier (past).
+    If date == today and a time is provided, only post when time <= now.
     Returns a list of row dicts with '__row_index__' added.
     """
     records = content_sheet.get_all_records()
-    today_str = datetime.date.today().isoformat()
     pending_rows = []
+
+    now = datetime.datetime.now()
+    today = now.date()
+    current_time = now.time()
 
     for idx, row in enumerate(records, start=2):
         status = (row.get("status") or "").strip().lower()
-        date_val = normalize_sheet_date(row.get("date"))
-
         if status != "pending":
             continue
 
-        row["date"] = date_val  # optional debug
+        # Normalize date/time from the sheet
+        date_val = normalize_sheet_date(row.get("date"))   # returns "YYYY-MM-DD" or ""
+        time_val = normalize_sheet_time(row.get("time"))   # returns "HH:MM" or ""
 
+        # Optional debug: keep normalized values in row dict
+        row["date"] = date_val
+        row["time"] = time_val
+
+        # Decide if this row is due
         if date_val:
-            # ✅ due if date is today OR earlier
-            if date_val > today_str:
-                continue  # future -> not due yet
+            post_date = datetime.date.fromisoformat(date_val)
+
+            # Future date -> not due yet
+            if post_date > today:
+                continue
+
+            # Same date + time provided -> only due if time has passed
+            if post_date == today and time_val:
+                post_time = datetime.datetime.strptime(time_val, "%H:%M").time()
+                if post_time > current_time:
+                    continue
+
+            # If post_date < today OR post_date == today (and time ok), it's due
         else:
-        # blank date means "post any day"
+            # Blank date means "post any day the bot runs"
             pass
 
-    row["__row_index__"] = idx
-    pending_rows.append(row)
-
+        # If we reach here, row is due
+        row["__row_index__"] = idx
+        pending_rows.append(row)
 
     return pending_rows
 
 
+
 def update_content_status(content_sheet, row_index, new_status):
-    
+
     def get_column_index_by_header(ws, header_name: str) -> int:
     headers = ws.row_values(1)  # first row
     headers_lower = [h.strip().lower() for h in headers]
