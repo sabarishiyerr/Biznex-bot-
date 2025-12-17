@@ -20,6 +20,9 @@ BOT_TIMEZONE_OFFSET_MINUTES = 30
 
 load_dotenv()
 
+RUN_MODE = (os.getenv("RUN_MODE") or "simulate").lower()
+
+
 GOOGLE_SHEETS_CRED_PATH = os.getenv("GOOGLE_SHEETS_CRED_PATH")
 GOOGLE_SHEETS_DOC_NAME = os.getenv("GOOGLE_SHEETS_DOC_NAME")
 
@@ -261,12 +264,12 @@ def generate_caption_if_needed(platform, idea, caption_existing, hashtags_existi
 # 4. SOCIAL POSTING (SIMULATED FB / LINKEDIN / IG)
 # =========================
 
-def post_to_facebook(caption):
-    """
+""" def post_to_facebook(caption):
+    
     Post text to a Facebook Page using the Graph API.
 
     If FB creds not set, just print and return a fake URL.
-    """
+    
     if not FB_PAGE_ACCESS_TOKEN or not FB_PAGE_ID:
         print("[INFO] FB credentials not set. Simulating FB page post...")
         print("----- FB PAGE POST START -----")
@@ -293,14 +296,21 @@ def post_to_facebook(caption):
         return None
 
     post_url = f"https://www.facebook.com/{FB_PAGE_ID}/posts/{post_id.split('_')[-1]}"
-    return post_url
+    return post_url """
+
+def post_to_facebook(caption):
+    if RUN_MODE != "live":
+        print("[SIMULATE] FB page post")
+        return "https://facebook.com/fake_page_post"
+
+    # live posting code (Graph API) below...
 
 
-def post_to_linkedin(caption):
-    """
+
+""" def post_to_linkedin(caption):
     Simulated LinkedIn post.
     Later, this can be replaced with a real LinkedIn API call.
-    """
+
     if not LINKEDIN_ACCESS_TOKEN:
         print("[INFO] LinkedIn credentials not set. Simulating LinkedIn post...")
         print("----- LINKEDIN POST START -----")
@@ -312,14 +322,19 @@ def post_to_linkedin(caption):
     # Real LinkedIn API integration would go here.
     # For now, we just simulate even if token is set.
     fake_url = "https://linkedin.com/posts/fake_linkedin_post_real"
-    return fake_url
+    return fake_url """
+
+def post_to_linkedin(caption):
+    if RUN_MODE != "live":
+        print("[SIMULATE] LinkedIn post")
+        return "https://linkedin.com/posts/fake_linkedin_post"
 
 
-def post_to_instagram(caption):
-    """
+
+""" def post_to_instagram(caption):
     Simulated Instagram post.
     Later, this can be replaced with a real Instagram Graph API call.
-    """
+
     if not INSTAGRAM_ACCESS_TOKEN:
         print("[INFO] Instagram credentials not set. Simulating IG post...")
         print("----- INSTAGRAM POST START -----")
@@ -330,7 +345,13 @@ def post_to_instagram(caption):
 
     # Real Instagram API integration would go here.
     fake_url = "https://instagram.com/p/fake_instagram_post_real"
-    return fake_url
+    return fake_url """
+
+def post_to_instagram(caption):
+    if RUN_MODE != "live":
+        print("[SIMULATE] IG post")
+        return "https://instagram.com/p/fake_instagram_post"
+
 
 
 # =========================
