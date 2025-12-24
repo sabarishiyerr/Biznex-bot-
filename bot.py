@@ -57,7 +57,7 @@ def get_sheets():
     log_sheet = sh.worksheet("PostLog")
     return content_sheet, log_sheet
 
-def add_content_item(date, platforms, idea,
+def add_content_item(date, time, platforms, idea,
                      caption="", image_url="", hashtags="", groups=""):
     """
     Append a new content row to the ContentPlan sheet with status='pending'.
@@ -86,6 +86,7 @@ def add_content_item(date, platforms, idea,
     new_row = [
         next_id,
         date,
+        time,
         platforms,
         idea,
         caption,
