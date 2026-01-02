@@ -9,6 +9,7 @@ import streamlit.components.v1 as components
 
 COMPANY_LOGO = "https://play-lh.googleusercontent.com/rt1NjtZV8hnqPL-7nI6685Etm1nS4EpQ96ibw_EYEPOyu4vH8Kgq3oBUplUYexx1mA"
 
+
 # -------------------------
 # Draft helper (for live preview)
 # -------------------------
@@ -45,7 +46,6 @@ image_url: https://... (optional)
 st.write("Type your post details like this **(or just write a simple sentence)**:")
 st.code(PROMPT_TEMPLATE, language="text")
 
-
 st.divider()
 
 # -------------------------
@@ -58,6 +58,15 @@ if "messages" not in st.session_state:
 
 if "draft" not in st.session_state:
     st.session_state.draft = None
+
+# One-time notification (survives st.rerun)
+if "toast" not in st.session_state:
+    st.session_state.toast = None
+
+if st.session_state.toast:
+    st.success(st.session_state.toast)
+    st.session_state.toast = None
+
 
 # -------------------------
 # Display chat history
@@ -159,15 +168,11 @@ def parse_simple_statement(text: str):
 
     # 7) idea: remove obvious keywords and keep remaining text
     cleaned = raw
-    cleaned = re.sub(
-        r"\b(post|schedule|publish|share)\b", "", cleaned, flags=re.IGNORECASE
-    )
+    cleaned = re.sub(r"\b(post|schedule|publish|share)\b", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\b(on|at|today|tomorrow)\b", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\b(\d{4}-\d{2}-\d{2})\b", "", cleaned)
     cleaned = re.sub(r"\b(\d{1,2}:\d{2})\b", "", cleaned)
-    cleaned = re.sub(
-        r"\b(\d{1,2}\s*(am|pm))\b", "", cleaned, flags=re.IGNORECASE
-    )
+    cleaned = re.sub(r"\b(\d{1,2}\s*(am|pm))\b", "", cleaned, flags=re.IGNORECASE)
 
     for k in PLATFORM_ALIASES.keys():
         cleaned = re.sub(rf"\b{k}\b", "", cleaned, flags=re.IGNORECASE)
@@ -270,12 +275,12 @@ else:
 
     def render_caption_html(text: str) -> str:
         safe = escape_html(text)
-        safe = re.sub(r"(#\w+)", r"<span style='color:#1d9bf0; font-weight:600;'>\1</span>", safe)
+        safe = re.sub(r"(#\w+)", r"<span style='color:#0a66c2; font-weight:600;'>\1</span>", safe)
         safe = safe.replace("\n", "<br>")
         return safe
 
     def render_li_preview(img_url: str, caption_text: str):
-        max_width = 700
+        max_width = 520
         border = "rgba(0,0,0,0.12)"
         subtle = "rgba(0,0,0,0.6)"
         text_main = "#111827"
@@ -284,7 +289,6 @@ else:
 
         company = "Global Biznex"
         tagline = "Company • 1w • 🌎"
-        headline = ""
 
         raw = (caption_text or "").strip()
         plain = raw.replace("\r\n", "\n")
@@ -292,10 +296,12 @@ else:
         if not plain:
             body_html = f"<div style='color:{subtle}; font-size:14px;'>No caption</div>"
         else:
-            max_chars = 180
+            max_chars = 220
             is_long = len(plain) > max_chars
             short = plain[:max_chars].rstrip()
-            more_html = " <span style='color:#0a66c2; font-weight:700;'>…more</span>" if is_long else ""
+            more_html = (
+                " <span style='color:#0a66c2; font-weight:700;'>…more</span>" if is_long else ""
+            )
             body_html = f"""
             <div style="font-size:16px; color:{text_main}; line-height:1.35; white-space:normal;">
                 {render_caption_html(short)}{more_html}
@@ -312,7 +318,7 @@ else:
                 border-top:1px solid {border};
                 border-bottom:1px solid {border};
             ">
-                <img src="{escape_html(img_url)}" style="width:100%;height:100%;object-fit:cover;display:block;" />
+                <img src="{escape_html(img_url)}" style="width:100%;height:100%;object-fit:cover;display:block;max-width:100%;" />
             </div>
             """
         else:
@@ -330,72 +336,68 @@ else:
             """
 
         html = textwrap.dedent(f"""
-        <div style="background:{bg}; padding:10px;">
-        <div style="
-            max-width:{max_width}px;
-            margin:0 auto;
-            border:1px solid {border};
-            border-radius:14px;
-            overflow:hidden;
-            background:{panel};
-            box-shadow:0 6px 18px rgba(0,0,0,0.08);
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;
-        ">
+        <div style="height:760px; overflow-y:auto; overflow-x:hidden; background:{bg}; padding:10px;">
+          <div style="
+              width:100%;
+              max-width:{max_width}px;
+              margin:0 auto;
+              border:1px solid {border};
+              border-radius:14px;
+              overflow:hidden;
+              background:{panel};
+              box-shadow:0 6px 18px rgba(0,0,0,0.08);
+              font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;
+          ">
 
-            <div style="display:flex; gap:10px; padding:14px 14px 10px 14px; align-items:flex-start;">
-            <div style="
-                width:44px;
-                height:44px;
-                border-radius:50%;
-                overflow:hidden;
-                border:1px solid rgba(0,0,0,0.1);
-                background:#ffffff;
-                flex:0 0 auto;
-            ">
-                <img src="{escape_html(COMPANY_LOGO)}"
-                    style="width:100%;height:100%;object-fit:cover;display:block;" />
-            </div>
-
-            <div style="line-height:1.15;">
-                <div style="display:flex; align-items:center; gap:6px;">
-                <div style="font-weight:900; color:{text_main}; font-size:16px;">{escape_html(company)}</div>
-                <div style="width:18px;height:18px;border-radius:50%; background:#0a66c2; color:#fff;
-                            display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;">✓</div>
-                <div style="color:{subtle}; font-weight:600;">• 1st</div>
+              <div style="display:flex; gap:10px; padding:14px 14px 10px 14px; align-items:flex-start;">
+                <div style="
+                    width:44px;height:44px;border-radius:50%;
+                    overflow:hidden;border:1px solid rgba(0,0,0,0.1);
+                    background:#ffffff;flex:0 0 auto;
+                ">
+                    <img src="{escape_html(COMPANY_LOGO)}"
+                        style="width:100%;height:100%;object-fit:cover;display:block;" />
                 </div>
-                <div style="font-size:12.5px; color:{subtle}; margin-top:2px;">
-                {escape_html(tagline)}
+
+                <div style="line-height:1.15;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                      <div style="font-weight:900; color:{text_main}; font-size:16px;">{escape_html(company)}</div>
+                      <div style="width:18px;height:18px;border-radius:50%; background:#0a66c2; color:#fff;
+                                  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;">✓</div>
+                      <div style="color:{subtle}; font-weight:600;">• 1st</div>
+                    </div>
+                    <div style="font-size:12.5px; color:{subtle}; margin-top:2px;">
+                      {escape_html(tagline)}
+                    </div>
                 </div>
-                {f"<div style='font-size:12.5px;color:{subtle};'>{escape_html(headline)}</div>" if headline else ""}
-            </div>
 
-            <div style="margin-left:auto; color:{subtle}; font-size:18px; font-weight:900;">⋯</div>
-            </div>
+                <div style="margin-left:auto; color:{subtle}; font-size:18px; font-weight:900;">⋯</div>
+              </div>
 
-            <div style="padding:0 14px 12px 14px;">
-            {body_html}
-            </div>
+              <div style="padding:0 14px 12px 14px;">
+                {body_html}
+              </div>
 
-            {media_html}
+              {media_html}
 
-            <div style="display:flex; align-items:center; justify-content:space-between;
-                        padding:10px 14px; color:{subtle}; font-size:13px;">
-            <div>👍 ❤️ 🎉 <span style="margin-left:6px;">xyz and 88 others</span></div>
-            <div>9 comments • 1 repost</div>
-            </div>
+              <div style="display:flex; align-items:center; justify-content:space-between;
+                          padding:10px 14px; color:{subtle}; font-size:13px;">
+                <div>👍 ❤️ 🎉 <span style="margin-left:6px;">xyz and 88 others</span></div>
+                <div>9 comments • 1 repost</div>
+              </div>
 
-            <div style="display:flex; gap:0; border-top:1px solid {border};">
-            <div style="flex:1; padding:12px; text-align:center; font-weight:800; color:{subtle};">👍Like</div>
-            <div style="flex:1; padding:12px; text-align:center; font-weight:800; color:{subtle};">💬Comment</div>
-            <div style="flex:1; padding:12px; text-align:center; font-weight:800; color:{subtle};">🔁Repost</div>
-            <div style="flex:1; padding:12px; text-align:center; font-weight:800; color:{subtle};">📧Send</div>
-            </div>
+              <div style="display:flex; gap:0; border-top:1px solid {border};">
+                <div style="flex:1; padding:6px; text-align:center; font-weight:800; color:{subtle};">👍Like</div>
+                <div style="flex:1; padding:6px; text-align:left; font-weight:800; color:{subtle};">💬Comment</div>
+                <div style="flex:1; padding:6px; text-align:right; font-weight:800; color:{subtle};">⇌ Repost</div>
+                <div style="flex:1; padding:6px; text-align:center; font-weight:800; color:{subtle};">⇗ Send</div>
+              </div>
 
-        </div>
+          </div>
         </div>
         """).strip()
 
-        components.html(html, height=760, scrolling=False)
+        components.html(html, height=500, width=500, scrolling=False)
 
     def render_fb_preview(img_url: str, caption_text: str):
         page_name = "Global Biznex"
@@ -404,20 +406,19 @@ else:
         comments = "42K comments"
         shares = "25K shares"
 
-        caption_html = render_caption_html(caption_text)
+        caption_html = (
+            render_caption_html(caption_text)
+            if caption_text
+            else "<span style='color:#6b7280;'>No caption</span>"
+        )
 
         if img_url:
             media_html = f"""
             <div style="background:#ffffff;">
-            <div style="
-                width:100%;
-                aspect-ratio:4/3;
-                background:#eee;
-                overflow:hidden;
-            ">
+              <div style="width:100%; aspect-ratio:4/3; background:#eee; overflow:hidden;">
                 <img src="{escape_html(img_url)}"
                     style="width:100%;height:100%;object-fit:cover;display:block;" />
-            </div>
+              </div>
             </div>
             """
         else:
@@ -442,72 +443,55 @@ else:
             font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;
         ">
 
-        <div style="padding:12px 12px 6px 12px; display:flex; gap:10px; align-items:flex-start;">
-            <div style="
-                width:42px;
-                height:42px;
-                border-radius:50%;
-                overflow:hidden;
-                border:1px solid rgba(0,0,0,0.15);
-                background:#ffffff;
-            ">
-                <img src="{escape_html(COMPANY_LOGO)}"
-                    style="width:100%;height:100%;object-fit:cover;display:block;" />
+          <div style="padding:12px 12px 6px 12px; display:flex; gap:10px; align-items:flex-start;">
+            <div style="width:42px;height:42px;border-radius:50%;overflow:hidden;border:1px solid rgba(0,0,0,0.15);background:#ffffff;">
+              <img src="{escape_html(COMPANY_LOGO)}"
+                  style="width:100%;height:100%;object-fit:cover;display:block;" />
             </div>
 
             <div style="flex:1;">
-            <div style="display:flex; align-items:center; gap:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
                 <div style="font-weight:900; color:#111827; font-size:15px;">
-                {escape_html(page_name)}
+                  {escape_html(page_name)}
                 </div>
                 <div style="color:#1877f2; font-weight:800; font-size:14px;">· Follow</div>
-            </div>
-            <div style="font-size:12px; color:#6b7280; margin-top:2px;">
-                {escape_html(subtitle)}
-            </div>
+              </div>
+              <div style="font-size:12px; color:#6b7280; margin-top:2px;">
+                  {escape_html(subtitle)}
+              </div>
             </div>
 
             <div style="display:flex; gap:10px; color:#6b7280; font-weight:900;">
-            <div style="font-size:18px;">⋯</div>
-            <div style="font-size:18px;">✕</div>
+              <div style="font-size:18px;">⋯</div>
+              <div style="font-size:18px;">✕</div>
             </div>
-        </div>
+          </div>
 
-        <div style="padding:0 12px 10px 12px; color:#111827; font-size:14px; line-height:1.35;">
+          <div style="padding:0 12px 10px 12px; color:#111827; font-size:14px; line-height:1.35;">
             {caption_html}
-        </div>
+          </div>
 
-        {media_html}
+          {media_html}
 
-        <div style="padding:10px 12px; display:flex; align-items:center; justify-content:space-between; color:#6b7280; font-size:13px;">
+          <div style="padding:10px 12px; display:flex; align-items:center; justify-content:space-between; color:#6b7280; font-size:13px;">
             <div style="display:flex; align-items:center; gap:6px;">
-            <span style="
-                width:18px;height:18px;border-radius:50%;
-                background:#1877f2;color:#fff;
-                display:inline-flex;align-items:center;justify-content:center;
-                font-size:12px;font-weight:900;
-            ">👍</span>
-            <span style="
-                width:18px;height:18px;border-radius:50%;
-                background:#f59e0b;color:#fff;
-                display:inline-flex;align-items:center;justify-content:center;
-                font-size:12px;font-weight:900;
-            ">😮</span>
-            <span style="font-weight:800;">{escape_html(reactions)}</span>
+              <span style="width:18px;height:18px;border-radius:50%;background:#1877f2;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;">👍</span>
+              <span style="width:18px;height:18px;border-radius:50%;background:#f59e0b;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;">😮</span>
+              <span style="font-weight:800;">{escape_html(reactions)}</span>
             </div>
             <div style="display:flex; gap:12px; font-weight:700;">
-            <div>{escape_html(comments)}</div>
-            <div>{escape_html(shares)}</div>
+              <div>{escape_html(comments)}</div>
+              <div>{escape_html(shares)}</div>
             </div>
-        </div>
+          </div>
 
-        <div style="height:1px;background:#e5e7eb;"></div>
+          <div style="height:1px;background:#e5e7eb;"></div>
 
-        <div style="display:flex; justify-content:space-around; padding:10px 0; color:#6b7280; font-weight:900; font-size:14px;">
+          <div style="display:flex; justify-content:space-around; padding:10px 0; color:#6b7280; font-weight:900; font-size:14px;">
             <div style="display:flex; align-items:center; gap:8px;">👍 <span>Like</span></div>
             <div style="display:flex; align-items:center; gap:8px;">💬 <span>Comment</span></div>
             <div style="display:flex; align-items:center; gap:8px;">↗ <span>Share</span></div>
-        </div>
+          </div>
 
         </div>
         """).strip()
@@ -519,24 +503,22 @@ else:
 
         if platform_key in ["ig", "instagram"]:
             username = "globalbiznex"
-            location = ""
             max_width = 420
             border = "rgba(255,255,255,0.10)"
             subtle = "rgba(255,255,255,0.65)"
             text_main = "#ffffff"
             panel = "#0f1720"
-            caption_html = render_caption_html(caption_text)
+            caption_html = (
+                render_caption_html(caption_text)
+                if caption_text
+                else "<span style='color:rgba(255,255,255,0.6);'>No caption</span>"
+            )
 
             if img_url:
                 media_html = f"""
-                <div style="
-                    width:100%;
-                    aspect-ratio:1/1;
-                    background:#111827;
-                    overflow:hidden;
-                ">
-                <img src="{escape_html(img_url)}"
-                    style="width:100%;height:100%;object-fit:cover;display:block;" />
+                <div style="width:100%; aspect-ratio:1/1; background:#111827; overflow:hidden;">
+                  <img src="{escape_html(img_url)}"
+                      style="width:100%;height:100%;object-fit:cover;display:block;" />
                 </div>
                 """
             else:
@@ -552,61 +534,53 @@ else:
                 """
 
             html = textwrap.dedent(f"""
+            <div style="
+                max-width:{max_width}px;
+                margin-top:10px;
+                border:1px solid {border};
+                border-radius:14px;
+                overflow:hidden;
+                background:{panel};
+                box-shadow:0 6px 18px rgba(0,0,0,0.35);
+                font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;
+            ">
+              <div style="display:flex;align-items:center;gap:10px;padding:12px;background:{panel};">
                 <div style="
-                    max-width:{max_width}px;
-                    margin-top:10px;
-                    border:1px solid {border};
-                    border-radius:14px;
-                    overflow:hidden;
-                    background:{panel};
-                    box-shadow:0 6px 18px rgba(0,0,0,0.35);
-                    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;
+                    width:36px;height:36px;border-radius:50%;
+                    padding:2px;
+                    background: radial-gradient(circle at 30% 30%, #f9ce34, #ee2a7b, #6228d7);
                 ">
-                    <div style="display:flex;align-items:center;gap:10px;padding:12px;background:{panel};">
-                        <div style="
-                            width:36px;
-                            height:36px;
-                            border-radius:50%;
-                            padding:2px;
-                            background: radial-gradient(circle at 30% 30%, #f9ce34, #ee2a7b, #6228d7);
-                        ">
-                        <div style="
-                            width:100%;
-                            height:100%;
-                            border-radius:50%;
-                            overflow:hidden;
-                            background:#fff;
-                        ">
-                            <img src="{escape_html(COMPANY_LOGO)}"
-                                style="width:100%;height:100%;object-fit:cover;display:block;" />
-                        </div>
-                        </div>
-
-                        <div style="line-height:1.1;">
-                            <div style="font-weight:800;color:{text_main};font-size:14px;">{escape_html(username)}</div>
-                            <div style="font-size:12px;color:{subtle};">{escape_html(location)}</div>
-                        </div>
-                        <div style="margin-left:auto;color:{subtle};font-size:18px;font-weight:900;">⋯</div>
-                    </div>
-
-                    {media_html}
-
-                    <div style="display:flex;align-items:center;gap:14px;padding:10px 12px 6px;color:{text_main};font-size:18px;">
-                        <div>♡</div><div>💬</div><div>✈️</div><div style="margin-left:auto">🔖</div>
-                    </div>
-
-                    <div style="padding:0 12px 8px;color:{text_main};font-size:13px;">
-                        <span style="font-weight:800;">1,234</span> likes
-                    </div>
-
-                    <div style="padding:0 12px 10px;color:{text_main};font-size:13px;line-height:1.35;">
-                        <span style="font-weight:800;">{escape_html(username)}</span>
-                        <span style="font-weight:500;"> {caption_html}</span>
-                    </div>
-
-                    <div style="padding:0 12px 12px;color:{subtle};font-size:11px;">25 minutes ago</div>
+                  <div style="width:100%;height:100%;border-radius:50%;overflow:hidden;background:#fff;">
+                    <img src="{escape_html(COMPANY_LOGO)}"
+                        style="width:100%;height:100%;object-fit:cover;display:block;" />
+                  </div>
                 </div>
-                """).strip()
+
+                <div style="line-height:1.1;">
+                  <div style="font-weight:800;color:{text_main};font-size:14px;">{escape_html(username)}</div>
+                  <div style="font-size:12px;color:{subtle};"></div>
+                </div>
+                <div style="margin-left:auto;color:{subtle};font-size:18px;font-weight:900;">⋯</div>
+              </div>
+
+              {media_html}
+
+              <div style="display:flex;align-items:center;gap:14px;padding:10px 12px 6px;color:{text_main};font-size:18px;">
+                <div>♡</div><div>💬</div><div>⇗</div><div style="margin-left:auto">🔖</div>
+              </div>
+
+              <div style="padding:0 12px 8px;color:{text_main};font-size:13px;">
+                <span style="font-weight:800;">1,234</span> likes
+              </div>
+
+              <div style="padding:0 12px 10px;color:{text_main};font-size:13px;line-height:1.35;">
+                <span style="font-weight:800;">{escape_html(username)}</span>
+                <span style="font-weight:500;"> {caption_html}</span>
+              </div>
+
+              <div style="padding:0 12px 12px;color:{subtle};font-size:11px;">25 minutes ago</div>
+            </div>
+            """).strip()
 
             components.html(html, height=720, scrolling=False)
             return
@@ -616,86 +590,62 @@ else:
             return
 
         render_fb_preview(img_url=img_url, caption_text=caption_text)
-        return
 
-    # -------------------------
-    # SIDE-BY-SIDE LAYOUT
-    # -------------------------
-    left, right = st.columns([1, 1], gap="large")
+    # ✅ Create placeholder so Preview APPEARS ABOVE but renders AFTER draft update
+    preview_container = st.container()
 
-    with left:
-        st.subheader("📝 Draft")
-        d = current_draft()
+    # ---------- DRAFT (BOTTOM, but executed FIRST so preview is not "one step behind") ----------
+    st.subheader("📝 Draft")
+    d = current_draft()
 
-        st.session_state.setdefault("date_val", d.get("date", ""))
-        st.session_state.setdefault("time_val", d.get("time", ""))
-        st.session_state.setdefault("platforms_val", d.get("platforms", ""))
-        st.session_state.setdefault("idea_val", d.get("idea", ""))
-        st.session_state.setdefault("groups_val", d.get("groups", ""))
-        st.session_state.setdefault("caption_val", d.get("caption", ""))
-        st.session_state.setdefault("hashtags_val", d.get("hashtags", ""))
-        st.session_state.setdefault("image_url_val", d.get("image_url", ""))
+    st.session_state.setdefault("date_val", d.get("date", ""))
+    st.session_state.setdefault("time_val", d.get("time", ""))
+    st.session_state.setdefault("platforms_val", d.get("platforms", ""))
+    st.session_state.setdefault("idea_val", d.get("idea", ""))
+    st.session_state.setdefault("groups_val", d.get("groups", ""))
+    st.session_state.setdefault("caption_val", d.get("caption", ""))
+    st.session_state.setdefault("hashtags_val", d.get("hashtags", ""))
+    st.session_state.setdefault("image_url_val", d.get("image_url", ""))
 
-        date_val = st.text_input("Date (YYYY-MM-DD, optional)", key="date_val")
-        time_val = st.text_input("Time (HH:MM, optional)", key="time_val")
-        platforms_val = st.text_input("Platforms (comma-separated)", key="platforms_val")
-        idea_val = st.text_area("Idea (required)", key="idea_val")
-        groups_val = st.text_input("Groups (optional)", key="groups_val")
-        caption_val = st.text_area("Caption (optional)", key="caption_val")
-        hashtags_val = st.text_input("Hashtags (optional)", key="hashtags_val")
-        image_url_val = st.text_input("Image URL (optional)", key="image_url_val")
+    date_val = st.text_input("Date (YYYY-MM-DD, optional)", key="date_val")
+    time_val = st.text_input("Time (HH:MM, optional)", key="time_val")
+    platforms_val = st.text_input("Platforms (comma-separated)", key="platforms_val")
+    idea_val = st.text_area("Idea (required)", key="idea_val")
+    groups_val = st.text_input("Groups (optional)", key="groups_val")
+    caption_val = st.text_area("Caption (optional)", key="caption_val")
+    hashtags_val = st.text_input("Hashtags (optional)", key="hashtags_val")
+    image_url_val = st.text_input("Image URL (optional)", key="image_url_val")
 
-        st.session_state.draft = {
-            "date": date_val.strip(),
-            "time": time_val.strip(),
-            "platforms": platforms_val.strip(),
-            "idea": idea_val.strip(),
-            "groups": groups_val.strip(),
-            "caption": caption_val.strip(),
-            "hashtags": hashtags_val.strip(),
-            "image_url": image_url_val.strip(),
-        }
+    # ✅ Update session draft immediately after inputs
+    st.session_state.draft = {
+        "date": date_val.strip(),
+        "time": time_val.strip(),
+        "platforms": platforms_val.strip(),
+        "idea": idea_val.strip(),
+        "groups": groups_val.strip(),
+        "caption": caption_val.strip(),
+        "hashtags": hashtags_val.strip(),
+        "image_url": image_url_val.strip(),
+    }
 
-        col_a, col_b = st.columns(2)
-        with col_a:
-            save_clicked = st.button("✅ Confirm & Save to Google Sheet")
-        with col_b:
-            clear_clicked = st.button("🧹 Clear Draft")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        save_clicked = st.button("✅ Confirm & Save")
+    with col_b:
+        clear_clicked = st.button("🧹 Clear Draft")
 
-    with right:
-        st.subheader("👀 Preview")
-
-        draft = st.session_state.draft
-
-        st.caption(
-            f"Date: {draft.get('date') or 'Any day'} | "
-            f"Time: {draft.get('time') or 'Any time'} | "
-            f"Platforms: {draft.get('platforms') or '-'}"
-        )
-
-        img = (draft.get("image_url") or "").strip()
-        caption = (draft.get("caption") or "").strip()
-        hashtags = (draft.get("hashtags") or "").strip()
-
-        caption_preview = caption + ("\n\n" + hashtags if (caption and hashtags) else "")
-
-        st.markdown("### Platform Preview")
-        platforms_raw = draft.get("platforms") or ""
-        platforms = [p.strip() for p in platforms_raw.split(",") if p.strip()]
-        if not platforms:
-            platforms = ["FB", "IG", "LinkedIn"]
-
-        tabs = st.tabs(platforms)
-        for i, p in enumerate(platforms):
-            with tabs[i]:
-                render_post_preview(platform=p, img_url=img, caption_text=caption_preview)
-
-    # -------------------------
-    # Buttons actions (must be OUTSIDE columns)
-    # -------------------------
     if clear_clicked:
         st.session_state.draft = None
-        for k in ["date_val","time_val","platforms_val","idea_val","groups_val","caption_val","hashtags_val","image_url_val"]:
+        for k in [
+            "date_val",
+            "time_val",
+            "platforms_val",
+            "idea_val",
+            "groups_val",
+            "caption_val",
+            "hashtags_val",
+            "image_url_val",
+        ]:
             st.session_state.pop(k, None)
         st.rerun()
 
@@ -723,11 +673,51 @@ else:
                     hashtags=hashtags_val.strip(),
                     groups=groups_val.strip(),
                 )
-                st.success(f"Saved ✅ (ID {new_id}) — status is pending.")
+
+                st.session_state.toast = f"✅ Draft saved to Google Sheet successfully. (ID {new_id})"
+
                 st.session_state.draft = None
-                for k in ["date_val","time_val","platforms_val","idea_val","groups_val","caption_val","hashtags_val","image_url_val"]:
+                for k in [
+                    "date_val","time_val","platforms_val","idea_val",
+                    "groups_val","caption_val","hashtags_val","image_url_val"
+                ]:
                     st.session_state.pop(k, None)
+
                 st.rerun()
+
+    st.divider()
+
+    # ---------- PREVIEW (TOP visually, but executed AFTER updating draft) ----------
+    with preview_container:
+        st.subheader("👀 Preview")
+        draft = st.session_state.draft or {}
+
+        st.caption(
+            f"Date: {draft.get('date') or 'Any day'} | "
+            f"Time: {draft.get('time') or 'Any time'} | "
+            f"Platforms: {draft.get('platforms') or '-'}"
+        )
+
+        img = (draft.get("image_url") or "").strip()
+        caption = (draft.get("caption") or "").strip()
+        hashtags = (draft.get("hashtags") or "").strip()
+
+        # ✅ Preview ONLY uses caption (never idea)
+        if caption:
+            caption_preview = caption + (("\n\n" + hashtags) if hashtags else "")
+        else:
+            caption_preview = ""  # renderers show "No caption"
+
+        st.markdown("### Platform Preview")
+        platforms_raw = draft.get("platforms") or ""
+        platforms = [p.strip() for p in platforms_raw.split(",") if p.strip()]
+        if not platforms:
+            platforms = ["FB", "IG", "LinkedIn"]
+
+        tabs = st.tabs(platforms)
+        for i, p in enumerate(platforms):
+            with tabs[i]:
+                render_post_preview(platform=p, img_url=img, caption_text=caption_preview)
 
 
 # -------------------------
@@ -759,7 +749,7 @@ Here’s what I extracted:
 - **Hashtags:** `{parsed['hashtags'] or 'Auto'}`
 - **Image URL:** `{parsed['image_url'] or 'None'}`
 
-👇 You can edit everything in the draft form above, then click **Confirm & Save**.
+👇 You can edit everything in the draft form below, then click **Confirm & Save**.
 """
         st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
         st.rerun()
