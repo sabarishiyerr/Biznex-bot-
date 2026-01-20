@@ -26,8 +26,7 @@ RUN_MODE = (os.getenv("RUN_MODE") or "simulate").lower()
 GOOGLE_SHEETS_CRED_PATH = os.getenv("GOOGLE_SHEETS_CRED_PATH")
 GOOGLE_SHEETS_DOC_NAME = os.getenv("GOOGLE_SHEETS_DOC_NAME")
 
-FB_PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
-FB_PAGE_ID = os.getenv("FB_PAGE_ID")
+
 
 # placeholders for future real integrations (currently unused / simulated)
 LINKEDIN_ACCESS_TOKEN = os.getenv("LINKEDIN_ACCESS_TOKEN")
@@ -55,7 +54,28 @@ def get_sheets():
     sh = gc.open(GOOGLE_SHEETS_DOC_NAME)
     content_sheet = sh.worksheet("ContentPlan")
     log_sheet = sh.worksheet("PostLog")
-    return content_sheet, log_sheet
+    clients_sheet = sh.worksheet("Clients")   # NEW
+    return content_sheet, log_sheet, clients_sheet
+
+def load_clients_map(clients_sheet):
+    rows = clients_sheet.get_all_records()
+    clients = {}
+    for r in rows:
+        key = (r.get("client_key") or "").strip()
+        if not key:
+            continue
+        active = str(r.get("active") or "").strip().lower() in ["true", "yes", "1"]
+        if not active:
+            continue
+
+        clients[key] = {
+            "fb_page_id": str(r.get("fb_page_id") or "").strip(),
+            "fb_page_access_token": str(r.get("fb_page_access_token") or "").strip(),
+            "ig_business_id": str(r.get("ig_business_id") or "").strip(),
+        }
+    return clients
+
+
 
 def add_content_item(date, time, platforms, idea,
                      caption="", image_url="", hashtags="", groups=""):
@@ -299,10 +319,30 @@ def generate_caption_if_needed(platform, idea, caption_existing, hashtags_existi
     post_url = f"https://www.facebook.com/{FB_PAGE_ID}/posts/{post_id.split('_')[-1]}"
     return post_url """
 
-def post_to_facebook(caption):
+def post_to_facebook(caption, image_url, client):
     if RUN_MODE != "live":
         print("[SIMULATE] FB page post")
         return "https://facebook.com/fake_page_post"
+
+    page_id = client["fb_page_id"]
+    token = client["fb_page_access_token"]
+
+    # If image_url exists, use /photos
+    if image_url:
+        url = f"https://graph.facebook.com/v20.0/{page_id}/photos"
+        data = {"url": image_url, "caption": caption, "access_token": token}
+        resp = requests.post(url, data=data)
+    else:
+        url = f"https://graph.facebook.com/v20.0/{page_id}/feed"
+        data = {"message": caption, "access_token": token}
+        resp = requests.post(url, data=data)
+
+    if resp.status_code != 200:
+        print("[ERROR] FB post failed:", resp.text)
+        return None
+
+    return "FB_POST_OK"  # you can build real URL later
+
 
     # live posting code (Graph API) below...
 
@@ -405,7 +445,9 @@ def log_to_word_doc(content_id, platform, caption, post_url):
 # =========================
 
 def process_all_pending_items():
-    content_sheet, log_sheet = get_sheets()
+    content_sheet, log_sheet, clients_sheet = get_sheets()
+    clients_map = load_clients_map(clients_sheet)
+
 
     pending_rows = find_all_pending_content(content_sheet)
     if not pending_rows:
@@ -425,6 +467,15 @@ def process_all_pending_items():
         caption_existing = row.get("caption", "")
         hashtags_existing = row.get("hashtags", "")
         platforms_raw = row.get("platforms", "")
+
+        client_key = (row.get("client_key") or "").strip()
+        client = clients_map.get(client_key)
+
+        if not client:
+            print(f"[ERROR] Unknown or inactive client_key '{client_key}'.")
+            update_content_status(content_sheet, row_index, "bad_client")
+            continue
+
 
         # split platforms like "FB, IG, LinkedIn"
         platforms = [p.strip() for p in platforms_raw.split(",") if p.strip()]
@@ -449,11 +500,13 @@ def process_all_pending_items():
             platform_lower = platform.lower()
 
             if platform_lower in ["fb", "facebook"]:
-                post_url = post_to_facebook(full_caption)
+                post_url = post_to_facebook(full_caption, image_url=row.get("image_url",""), client=client)
+
+            elif platform_lower in ["ig", "instagram"]:
+                post_url = post_to_instagram(full_caption, image_url=row.get("image_url",""), client=client)
+
             elif platform_lower in ["li", "linkedin"]:
                 post_url = post_to_linkedin(full_caption)
-            elif platform_lower in ["ig", "instagram"]:
-                post_url = post_to_instagram(full_caption)
             else:
                 print(f"[WARN] Platform '{platform}' not implemented yet. Skipping.")
                 all_success = False

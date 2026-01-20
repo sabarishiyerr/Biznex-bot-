@@ -1,3 +1,6 @@
+import os
+import secrets
+import requests
 import streamlit as st
 from bot import add_content_item  # process_all_pending_items not needed in this UI step
 
@@ -13,11 +16,23 @@ COMPANY_LOGO = "https://play-lh.googleusercontent.com/rt1NjtZV8hnqPL-7nI6685Etm1
 # -------------------------
 # Draft helper (for live preview)
 # -------------------------
+
+def set_toast(msg: str):
+    st.session_state.toast = msg
+
+def get_query_param(name: str):
+    qp = st.experimental_get_query_params()  # Streamlit query param access :contentReference[oaicite:1]{index=1}
+    return (qp.get(name, [None]) or [None])[0]
+
+def clear_query_params():
+    st.experimental_set_query_params()  # clears query params :contentReference[oaicite:2]{index=2}
+
 def current_draft():
     return st.session_state.draft or {
         "date": "",
         "time": "",
         "platforms": "",
+        "client_key": "",
         "idea": "",
         "groups": "",
         "caption": "",
@@ -610,6 +625,7 @@ else:
     date_val = st.text_input("Date (YYYY-MM-DD, optional)", key="date_val")
     time_val = st.text_input("Time (HH:MM, optional)", key="time_val")
     platforms_val = st.text_input("Platforms (comma-separated)", key="platforms_val")
+    client_key_val = st.text_input("Client Key (required for posting)", key="client_key_val")
     idea_val = st.text_area("Idea (required)", key="idea_val")
     groups_val = st.text_input("Groups (optional)", key="groups_val")
     caption_val = st.text_area("Caption (optional)", key="caption_val")
@@ -621,6 +637,7 @@ else:
         "date": date_val.strip(),
         "time": time_val.strip(),
         "platforms": platforms_val.strip(),
+        "client_key": client_key_val.strip(),
         "idea": idea_val.strip(),
         "groups": groups_val.strip(),
         "caption": caption_val.strip(),
@@ -667,6 +684,7 @@ else:
                     date=date_val.strip(),
                     time=time_val.strip(),
                     platforms=platforms_val.strip(),
+                    client_key=client_key_val.strip(),
                     idea=idea_val.strip(),
                     caption=caption_val.strip(),
                     image_url=image_url_val.strip(),
